@@ -126,8 +126,8 @@ function layout(element) {
 
   let flexLine = [];
   const flexLines = [flexLine];
-  const mainSpace = elementStyle[mainSize];
-  const crossSpace = 0;
+  let mainSpace = elementStyle[mainSize];
+  let crossSpace = 0;
 
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
@@ -169,8 +169,174 @@ function layout(element) {
 
     flexLine.mainSpace = mainSpace;
 
+    if (style.flexWrap === "no-wrap" || isAutoMainSize) {
+      flexLine.crossSpace =
+        style[crossSize] !== undefined ? style[crossSize] : crossSpace;
+    } else {
+      flexLine[crossSpace] = crossSpace;
+    }
+
+    if (mainSpace < 0) {
+      const scale = style[mainSize] / (style[mainSize] - mainSpace);
+      const currentMain = mainSpace;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        const itemStyle = getStyle(item);
+
+        if (itemStyle.flex) {
+          itemStyle[mainSize] = 0;
+        }
+
+        itemStyle[mainSize] = itemStyle[mainSize] * scale;
+
+        itemStyle[mainStart] = currentMain;
+        itemStyle[mainEnd] =
+          itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+        currentMain = itemStyle[mainEnd];
+      }
+    } else {
+      flexLines.push(function item(items) {
+        const mainSpace = itmes.mainSpace;
+        let flexTotal = 0;
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          const itemStyle = getStyle(item);
+
+          if (item.flex !== null && item.flex !== void 0) {
+            flexTotal += item.flex;
+            continue;
+          }
+        }
+
+        if (flexTotal > 0) {
+          const currentMain = mainBase;
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const itemStyle = getStyle(item);
+            if (itemStyle.flex) {
+              itemStyle[mainSize] = (mainSpace / flexTotal) * itemStyle.flex;
+              itemStyle[mainStart] = currentMain;
+              itemStyle[mainEnd] =
+                itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+              currentMain = itemStyle[mainEnd];
+            }
+          }
+        } else {
+          if (style.justifyContent === "flex-start") {
+            let currentMain = mainBase;
+            let step = 0;
+          } else if (style.justifyContent === "flex-end") {
+            let currentMain = mainBase + mainSpace * mainSign;
+            let step = 0;
+          } else if (style.justifyContent === "center") {
+            let currentMain = (mainSpace / 2) * mainSign + mainBase;
+            let step = 0;
+          } else if (style.justifyContent === "space-between") {
+            let currentMain = mainBase;
+            let step = (mainSpace / (items.length - 1)) * mainSign;
+          } else if (style.justifyContent === "space-around") {
+            let step = (mainSpace / items.length) * mainSign;
+            let currentMain = step / 2 + mainSpace;
+          }
+
+          for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            const itemStyle = getStyle(item);
+
+            itemStyle[mainStart] = currentMain;
+            itemStyle[mainEnd] =
+              itemStyle[mainStart] + mainSign * itemStyle[mainSize];
+            currentMain = itemStyle[mainEnd] + step;
+          }
+        }
+      });
+    }
+
     console.log(items);
   }
+
+  if (!style[crossSize]) {
+    crossSpace = 0;
+    elementStyle[crossSize] = 0;
+    for (let i = 0; i < flexLines.length; i++) {
+      elementStyle[crossSize] += flexLines[i].crossSpace;
+    }
+  } else {
+    crossSpace = style[crossSize];
+    for (let i = 0; i < flexLines.length; i++) {
+      crossSpace -= flexLines[i].crossSpace;
+    }
+  }
+
+  if (style.flexWrap === "wrap-reverse") {
+    crossBase = style[crossSize];
+  } else {
+    crossBase = 0;
+  }
+
+  const lineSize = style[crossSize] / flexLines.length;
+  let step;
+  if (style.alignContent === "flex-start") {
+    crossBase += 0;
+    step = 0;
+  } else if (style.alignContent === "flex-end") {
+    crossBase += crossSign * crossSpace;
+    step = 0;
+  } else if (style.alignContent === "center") {
+    crossBase += (crossSign * crossSpace) / 2;
+    step = 0;
+  } else if (style.alignContent === "space-between") {
+    step = crossSpace / (flexLines.length - 1);
+    crossBase += 0;
+  } else if (style.alignContent === "space-around") {
+    step = crossSpace / flexLines.length;
+    crossBase += (crossSign * step) / 2;
+  } else if (style.alignContent === "stretch") {
+    step = 0;
+    crossBase += 0;
+  }
+
+  flexLines.forEach(function (items) {
+    const lineCrossSize =
+      style.alignContent === "stretch"
+        ? items.crossSpace + crossSpace
+        : item.crossSpace;
+
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      const itemStyle = getStyle(item);
+      const align = itemStyle.alignSelf || style.alignItems;
+
+      if (item === null) {
+        itemStyle[crossSize] = align === "stretch" ? lineCrossSize : 0;
+      }
+
+      if (align === "flex-start") {
+        itemStyle[crossStart] = crossBase;
+        itemStyle[crossEnd] =
+          itemStyle[crossStart] + crossSign * itemStyle[crossSize];
+      } else if (align === "flex-end") {
+        itemStyle[crossEnd] = crossBase + crossSign * lineCrossSize;
+        itemStyle[crossStart] =
+          itemStyle[crossEnd] - crossSign * itemStyle[crossSize];
+      } else if (align === "center") {
+        itemStyle[crossStart] =
+          crossBase + (crossSign * (lineCrossSize - itemStyle[crossSize])) / 2;
+        itemStyle[crossEnd] =
+          itemStyle[crossStart] + crossSign * itemStyle[crossSize];
+      } else if (align === "stretch") {
+        itemStyle[crossStart] = crossBase;
+        itemStyle[crossEnd] =
+          crossBase +
+          crossSign * (itemStyle[crossSize] !== null && itemStyle[crossSize]);
+        itemStyle[crossSize] = crossSign * itemStyle[crossSize];
+      }
+    }
+
+    crossBase += crossSign * (lineCrossSize + step);
+  });
 }
 
 function getStyle(element) {
