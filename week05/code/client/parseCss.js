@@ -174,9 +174,9 @@ function isMultySelector(selector) {
   }
 }
 
-// const b = "div.a.b.c#a";
+const b = "div.a.b.c#a";
+console.log(b.match(/(\w+)[.#]/));
 // console.log(b.match(/([.#]\w+)/g));
-// console.log(b.match(/(\w+)[.#]/));
 
 module.exports = {
   addCssRules,
